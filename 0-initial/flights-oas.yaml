@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: Flights API
+  description: |
+    A collection of operations managing flights.
+  contact: 
+    name: George K
+    email: georgek@nonamesecurity.com
+  version: v1
+servers:
+  - # local server
+    url: https://localhost:58443/api/v1
+    description: |
+      Local server
+  - # Net accessible server
+    url: https://<aws-host>:58443/api/v1
+    description: |
+      Net accessible server
+tags:
+  - name: Flights
+
+security:
+  - nonameJWT: []
+
+paths:
+
+  /flights:
+
+    get:
+      tags:
+        - Flights
+      parameters:
+        - # Query Parameter destination
+          name: destination
+          in: query
+          schema:
+            $ref: "#/components/schemas/IATA"
+      responses:
+        "200":
+          description: |
+            Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Flight"
+       
+    post:
+      tags:
+        - Flights
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Flight"
+      responses:
+        "201":
+          description: |
+            Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Success
+
+  /flights/{flight_id}:
+
+    get:
+      tags:
+        - Flights
+      parameters:
+        - # flight_id path/URI parameter
+          name: flight_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/FlightID"
+      responses:
+        "200":
+          description: |
+            Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flight"
+
+components:
+
+  securitySchemes:
+    nonameJWT: 
+      type: http
+      scheme: Bearer
+
+  schemas:
+
+    FlightID:
+      type: integer
+      format: int32
+      minimum: 1
+
+    IATA:
+      type: string
+      pattern: ^[A-Z]{3}$
+      example: CLE
+
+    IATA1:
+      type: string
+      pattern: ^[A-Z]{3}$
+      example: LAX
+
+    Flight:
+      type: object
+      required:
+        - code
+        - carrier
+        - destination
+        - origin
+        - departure
+        - price
+        - plane
+        - tseats
+        - eseats
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        code:
+          type: string
+          example: ABCD1234
+        carrier:
+          type: string
+          example: Delta
+        destination:
+          $ref: "#/components/schemas/IATA"
+        origin:
+          $ref: "#/components/schemas/IATA1"
+        departure:
+          type: string
+          example: 2025-01-01
+        price:
+          type: integer
+          format: int32
+          example: 999
+        plane:
+          type: string
+          example: Boeing 777
+        tseats:
+          type: integer
+          format: int32
+          example: 290
+        eseats:
+          type: integer
+          format: int32
+          example: 10

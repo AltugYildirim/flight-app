@@ -1,0 +1,1 @@
+export FLASK_APP="flights:create_app('flight_id')"

@@ -1,0 +1,64 @@
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - test
+  - noname-scan
+  - deploy
+
+variables:
+  ACTIVE_API_URL:
+    value: https://ec2-18-116-63-229.us-east-2.compute.amazonaws.com/active
+  ACTIVE_SEVERITY_THRESHOLD:
+    value: medium
+    description: build disturb on error level supported values [high , medium, low, info, none]
+
+scan-job: # This job runs in the build stage, which runs first.
+  stage: noname-scan
+  image: docker:20.10
+  services:
+    - docker:20.10-dind
+  before_script:
+    - |
+      docker login \
+      --username training@nonamesecurity.com \
+      --password $ACTIVE_REGISTRY_PASSWORD jfrog.cicd.nonamesec.com/noname-docker-release
+  script:
+    - |
+      docker run \
+      --pull always \
+      -e ACTIVE_CONFIG_FILE_PATH=/noname/active-config.json \
+      -v "${PWD}/oas":/oas \
+      -v "${PWD}/noname":/noname \
+      jfrog.cicd.nonamesec.com/noname-docker-release/active-cli:$(docker run --rm curlimages/curl:7.82.0 -L -v -k ${ACTIVE_API_URL}/backend/version)  \
+      scan \
+      --api-url=$ACTIVE_API_URL \
+      --api-token=$ACTIVE_API_TOKEN \
+      --test-group-id=62f5921c-d200-4f6f-a104-29674ad30a94 \
+      --branch-name=main \
+      --severity-threshold=$ACTIVE_SEVERITY_THRESHOLD
+
+build-job:       # This job runs in the build stage, which runs first.
+  stage: build
+  script:
+    - echo "Compiling the code..."
+    - echo "Compile complete."
+
+unit-test-job:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - echo "Running unit tests... This will take about 60 seconds."
+    - sleep 6
+    - echo "Code coverage is 90%"
+
+lint-test-job:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - echo "Linting code... This will take about 10 seconds."
+    - sleep 2
+    - echo "No lint issues found."
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+  environment: production
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."

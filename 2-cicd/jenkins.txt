@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+    options {
+        ansiColor('xterm')
+    }
+    environment {
+                ACTIVE_REGISTRY_PASSWORD = credentials('ACTIVE_REGISTRY_PASSWORD')
+                ACTIVE_API_TOKEN = credentials('ACTIVE_API_TOKEN')
+    }
+    parameters {
+        string(
+         name: 'ACTIVE_API_URL',
+         defaultValue: 'https://<active-testing-hostname>/active',
+         trim: true
+     )
+        string(
+         name: 'ACTIVE_TEST_SUITE_ID',
+         defaultValue: '<active_suite_id>',
+         trim: true
+     )
+        choice(
+        name: 'ACTIVE_SEVERITY_THRESHOLD',
+        choices: ['none','high','medium', 'low', 'info'],
+        description: 'Disturb deploy on error level'
+     )
+        string(
+         name: 'ACTIVE_BASE_URL',
+         defaultValue: '',
+         trim: true
+     )
+    }
+    stages {
+        stage('Pull docker image') {
+            steps {
+                script {
+                    sh """
+                    docker login \
+                    --username <active_registry_user> \
+                    --password "${ACTIVE_REGISTRY_PASSWORD}" jfrog.cicd.nonamesec.com/noname-docker-release
+                    """
+                }
+            }
+        }
+        stage('Execute test') {
+            steps {
+                script {
+                    sh '''
+                    docker run \
+                     --pull always \
+                     --network host \
+                     jfrog.cicd.nonamesec.com/noname-docker-release/active-cli:$(curl -k ${ACTIVE_API_URL}/backend/version) \
+                     scan \
+                     --api-url="${ACTIVE_API_URL}" \
+                     --api-token="${ACTIVE_API_TOKEN}" \
+                     --test-suite-id="${ACTIVE_TEST_SUITE_ID}" \
+                     --severity-threshold="${ACTIVE_SEVERITY_THRESHOLD}" \
+                     --base-url="${ACTIVE_BASE_URL}"
+                    '''
+                }
+            }
+        }
+    }
+}
